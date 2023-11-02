@@ -1,0 +1,1 @@
+{{ .FetchServerInfo "ls -la /" }}
