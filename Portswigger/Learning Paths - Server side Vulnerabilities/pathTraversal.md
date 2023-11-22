@@ -22,7 +22,7 @@ It is seen that the webshop presented in the lab, fetches the images for items t
 <img src="/image?filename=11.jpg">
 ```
 
-This suggest that the filename is retrieved from a folder located on the webserver through a filesystem API. The server is not guarded against attacks through this query, meaning the attacker can request arbitrary files on the server by guessing the correct folder and file name. 
+This suggest that the filename is retrieved from a folder located on the webserver through a filesystem API. The server is not guarded against attacks through this query, meaning the attacker can request arbitrary files on the server by guessing the correct folder and file name.
 To obtain the `/etc/passwd` file we request the resource at `/image?filename=../../../etc/passwd` and the server returns the contents of the passwd file:
 
 ``` bash

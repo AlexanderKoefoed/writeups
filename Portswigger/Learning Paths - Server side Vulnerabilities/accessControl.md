@@ -115,7 +115,7 @@ Sure enough, contained in the HTML is the GUID of Carlos:
 
 We then to "My account" (`https://0a7f003b04cce46981116bf700330095.web-security-academy.net/my-account?id=3f4e530d-69ae-492c-8842-b03d1c60992c`) and substitute the id with Carlos GUID like so: `https://0a7f003b04cce46981116bf700330095.web-security-academy.net/my-account?id=a8d45891-eac2-48b4-a05c-a659e39ed692`.
 
-After submitting his API key we solve the lab: 
+After submitting his API key we solve the lab:
 
 ``` HTML
     <p>Your username is: carlos</p>
@@ -124,4 +124,23 @@ After submitting his API key we solve the lab:
 
 ## Horizontal to vertical privilege escalation
 
-## Lab
+This kind of privilege escalation happens when a user can gain access to a different user with a higher level of privilege, such as an admin account. 
+
+## Lab: User ID controlled by request parameter with password disclosure
+
+**Lab Description**: This lab has user account page that contains the current user's existing password, prefilled in a masked input. To solve the lab retrieve the administrator's password, then use it to delete the user `carlos`. You can log in to your own account using the following credentials: `wiener:peter`
+
+### Lab solution
+
+An account is supplied and when logging in, it is seen that the URL contains the account id. This time the username is used as the ID as follows: `https://0aa2005b036186dd83536ebd009d00fb.web-security-academy.net/my-account?id=wiener`. Futhermore the my account page provides a update password functionality which shows the current password (it is masked, but visible in the HTML form.):
+
+``` HTML
+<input required="" type="password" name="password" value="peter">
+```
+
+If the query param `id` is changed to `administrator` like so: `my-account?id=administrator`, the account page will be loaded for the admin account, a long with the prefilled password change field. The admin password is obtained by finding it in the HTML or by viewing it in the raw response from the server.
+
+admin password : *ns5aspxaj656s0hlo58e*
+
+Then, the password is used to login as the admin, and complete the lab by deleting the user *Carlos*.
+
