@@ -22,7 +22,7 @@ This challenge supplied a JWT, which had a simple secret set. In order to crack 
 
 ### Challenge Solution
 
-Revisit.
+In this challenge we are presented with a login screen. No matter which username and password is supplied, the website accepts it and logs us in with the message `{username} you might not be ale to see the content! You should log in with a different account! Log in`. Viewing the storage tab of firefox (inspect) it is seen a cookie is set for the user. It looks to be encoded as URL encoding and Base64. Using cyberchef to decode this it provides: `O:4:"User":2:{s:8:"username";s:3:"hej";s:7:"isAdmin";b:0;}` Using cyberchef the cookie is changed to `"isAdmin":1` like this: `O:4:"User":2:{s:8:"username";s:3:"hej";s:7:"isAdmin";b:1;}` and then encoded as base64 and URL encoding last. Supplying this cookie to the browser and relading gives us the flag!: HKN{zU-zLN-jMbCL}.
 
 ## Challenge: Exploracaõ
 
