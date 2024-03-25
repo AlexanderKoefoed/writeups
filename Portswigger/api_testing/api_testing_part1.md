@@ -158,7 +158,7 @@ the backend might return the full object when a PATCH has been processed. The re
 
 This could show that ID and isAdmin parameters are bound to the user object. Testing for mass assignment is done by adding the hidden parameter to a PATCH request (could also be POST, if a new object is created). Then inserting a valid value and an invalid one. If the server behaves differently, it could suggest that mass assignment is present.
 
-## Lab: xploiting a mass assignment vulnerability
+## Lab: Exploiting a mass assignment vulnerability
 
 **Lab Description**: To solve the lab, find and exploit a mass assignment vulnerability to buy a Lightweight l33t Leather Jacket. You can log in to your own account using the following credentials: `wiener:peter`.
 
