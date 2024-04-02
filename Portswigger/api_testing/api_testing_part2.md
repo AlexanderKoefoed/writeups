@@ -104,3 +104,26 @@ We get a token. Now we can try the reset_token endpoint with our new token! It w
 
 ### Testing for server-side parameter pollution in REST paths
 
+A common practice with RESTful apis is the insertion of parameter names and values directly in the path, rather than in a query string. It looks like this: `/api/users/123` rather than `/api?users=123`.
+
+Injection in this type of api might resolve in undesired behavior as the path can be manipulated. Some frameworks might truncate the path if dots are present: `GET /api/private/users/peter/../admin` will result in `/api/private/users/admin`.
+
+Another practice is injection in structured data formats like JSON and XML. An attacker might be able to add fields to the input which are not sanitized like this: 
+
+```formdata
+POST /myaccount
+name=peter","access_level":"administrator
+```
+
+which then becomes:
+
+```JSON
+PATCH /users/7312/update
+{name="peter","access_level":"administrator"}
+```
+
+When the server side request is processed. This can also happen with XML, especially malicious if XXE (XML External Entity injection) is possible.
+
+Preventing parameter pollution is essentially configuring an allowlist which defines characters that don't need encoding and making sure all other user input is encoded before it is included in a server side request.
+
+This conclues the API testing learning path on Portswigger.
