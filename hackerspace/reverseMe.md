@@ -10,7 +10,11 @@ The ReverseMe binary is a C program compiled for ELF systems. The intent is to u
 
 Importing the file into Ghidra provides a lot of information, including the compiler used, architecture, address size and endian. Endian can be important as this denotes how values are stored in memory.
 
+![import window](ghidraImport.png)
+
 First we use the *Defined Strings* utility in Ghidra to examine what plaintext values we can find. This tool is found under `window -> Defined Strings`. It will open a new window highlighting all the strings Ghidra can find. These are clickable and leads the assembly viewer to the instructions where the string is used. Particularly exciting strings in this case could be `Access` or `granted!`. As the function using these strings, might tell us something about how to authenticate.
+
+![import window](ghidraSummary.png)
 
 Going to `Access` in the assembly shows us the following code:
 
@@ -98,8 +102,13 @@ left_shift:  79350000
 right_shift OR left_shift ~ 00003445 or 79350000 = 79353445
 ```
 
-Now this value is what our input should look like. Converted to ascii: `y54E`.
+This value is our input. Converted to ascii: `y54E`.
 
-Now you should think we are done now. But the pesky endian I mentioned earlier will be trouble on Ubuntu.
+You should think that we were done with this challenge. But the pesky endian I mentioned earlier will be trouble on the currently running architecture??. Depending on the CPU, the value is stored using either big endian or little endian.
+
+If it is little endian, this means that the least significant value will be stored on the first position in memory when storing multi byte values. Thus we have to reverse our input, in order for it to be parsed correctly.
+This happens because the ascii value we provide, is converted to an integer: `undefined4 FUN_08048563(int param_1,int param_2)` in param 2.
+
+**NOTE**: To view your memory endiannes on linux, use `lscpu | grep "Byte Order"`
 
 `Solution: ./ReverseMe E45y`

