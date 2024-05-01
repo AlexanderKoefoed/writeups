@@ -403,3 +403,32 @@ where the secret is just after *Comment*: `Commentk3nLb88FzkBr37T3Xmi9VHQMCi5Rod
 
 **Note**: I viewed the solution on Portswigger afterwards. They create a polyglot file where a `.php` is the output of ExifTool using `exiftool -Comment="<?php echo 'START ' . file_get_contents('/home/carlos/secret') . ' END'; ?>" <YOUR-INPUT-IMAGE>.jpg -o polyglot.php`. Also adding a *Start* and *End* to the output, to easilier identify where the outputted string is. Quite neat trick.
 
+## File Upload Race conditions
+
+Most of the time frameworks are robost against file upload vulnerabilities by randomizing names and not copying the file to the destination before all validation is cleared.
+
+Sometimes race conditions can be a way to bypass robust validation. An example is servers where the file is uploaded to the file system in order for anti malware software is run on the file. If the file does not pass the check it is then removed again. This can be dangerous as the attacker might be able to execute the file before the file is removed.
+
+Some applications also support users supplying an URL from which the file is downloaded. This is dangerous as the server needs to download the file before the validation can happen. Again allowing for a race condition. 
+
+Attackers can create larger files in order to increase the time for the race condition to hold. This is an advantage as there might be bruteforcing involved in finding the random filename and directory, in order to request the files execution.
+
+## Exploiting file upload vulnerabilities without remote code execution
+
+If we are not able to execute code server side, we might be able to create client side attacks using stored XSS. This is only useable if the file are served from the same Origin as to which the file is uploaded due to same-origin policies.
+
+Parsing attacks are possible if the server parses a specific file types. This could be XXE injection using XML based files such as MS office .doc or .xls files.
+
+### Uploading files using PUT
+
+The PUT method may be used with an endpoint configured for PUT requests to update or upload a new resource. Try sending OPTIONS to an endpoint, to verify that the endpoint supports PUT.
+
+## How to prevent file upload vulnerabilities
+
+- Check file extensions against a whitelist.
+- Validate and sanitize file names. Especially check for directory traversal `../`.
+- Rename uploaded files to a random name to avoid collision and easy execution.
+- Do not upload to servers permanent filesystem until validation has been ran
+- Use frameworks for file uploads.
+
+This concludes the learning path. Thanks for reading.
