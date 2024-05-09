@@ -252,3 +252,6 @@ I will revisit this later, as it requires Burp Collaborator to solve.
 
 ## Finding hidden attack surface for SSRF vulnerabilities
 
+Sometimes the attacker only controls a partial part of the URL. This makes the SSRF quite limited. URL within data formats can also be used to cause SSRF, even if the server does not implement vulnerable functionality directly. An example is XXE injection in XML formats.
+
+The referer header used for analytics is often visited by the server in order to retrieve data about the visiting user. This is a great place for SSRF.
