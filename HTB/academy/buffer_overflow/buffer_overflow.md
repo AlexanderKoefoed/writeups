@@ -125,7 +125,7 @@ Endiannes defines in which order we need to input our payload in the binary.
 
 In stack based buffer overflow, it is important to control the EIP. We need to manipulate the EIP to point to our code in order for it to execute. If we use the example on HTB academy, we see that storing *x* amount of a character will sometimes overwrite memory locations. Using the `info registers` command in GDB we are able to see which registers where overwritten. If the EIP is one of them, we are able to manipulate it. Now we need to determine the offset, in order to insert the correct values at the EIP memory address.
 
-![buffer overflow visualisation](buffer-overflow-eip.jpg)
+![buffer overflow visualisation](buffer-overflow-eip.png)
 
 ### Determine the offset
 
