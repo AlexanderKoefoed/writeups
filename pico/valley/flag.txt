@@ -1,0 +1,1 @@
+flag{i_will_become_fmt_master}
